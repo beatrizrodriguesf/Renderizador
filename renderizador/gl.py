@@ -64,21 +64,12 @@ class GL:
         # vira uma quantidade par de valores.
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o Polyline2D
         # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
-        
-        # Exemplo:
-        #pos_x = GL.width//2
-        #pos_y = GL.height//2
-        #gpu.GPU.draw_pixel([pos_x, pos_y], gpu.GPU.RGB8, [255, 0, 255])  # altera pixel (u, v, tipo, r, g, b)
-        # cuidado com as cores, o X3D especifica de (0,1) e o Framebuffer de (0,255)
-
-        print("polyline")
 
         color = []
         for value in colors['emissiveColor']:
             color.append(int(value*255))
 
-
-        for i in range(0, len(lineSegments)-3, 2):
+        for i in range(0, len(lineSegments)-2, 2):
 
             print(f"LineSegments: {lineSegments}")
             print(f"{color}")
@@ -106,13 +97,13 @@ class GL:
                 m = (y2-y1)/(x2-x1)
                 if abs(m) <= 1:
                     for x in range(xmin, xmax):
-                        y = int(m*(x-x1) + y1)
+                        y = int(m*(x+0.5-x1) + y1)
                         if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                             gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
                 else:
                     m = 1/m
                     for y in range(ymin, ymax):
-                        x = int(m*(y-y1) + x1)
+                        x = int(m*(y+0.5-y1) + x1)
                         if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                             gpu.GPU.draw_pixel([x, y], gpu.GPU.RGB8, color)
             else:
@@ -144,13 +135,7 @@ class GL:
             if (x_anterior - x) > 1:
                 for value in range(x+1, x_anterior):
                     gpu.GPU.draw_pixel([value,y-1], gpu.GPU.RGB8, color)
-            
             x_anterior = x
-        # Exemplo:
-        # pos_x = GL.width//2
-        # pos_y = GL.height//2
-        # gpu.GPU.draw_pixel([pos_x, pos_y], gpu.GPU.RGB8, [255, 0, 255])  # altera pixel (u, v, tipo, r, g, b)
-        # cuidado com as cores, o X3D especifica de (0,1) e o Framebuffer de (0,255)
 
     @staticmethod
     def triangleSet2D(vertices, colors):
@@ -186,17 +171,11 @@ class GL:
 
             for x in range(xmin, xmax):
                 for y in range(ymin, ymax):
-                    r0 = (x-p2[0])*n0[0] + (y-p2[1])*n0[1]
-                    r1 = (x-p0[0])*n1[0] + (y-p0[1])*n1[1]
-                    r2 = (x-p1[0])*n2[0] + (y-p1[1])*n2[1]
+                    r0 = (x+0.5-p2[0])*n0[0] + (y+0.5-p2[1])*n0[1]
+                    r1 = (x+0.5-p0[0])*n1[0] + (y+0.5-p0[1])*n1[1]
+                    r2 = (x+0.5-p1[0])*n2[0] + (y+0.5-p1[1])*n2[1]
                     if (r0*r1*r2 >= 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                         gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
-
-
-        # Exemplo:
-        # gpu.GPU.draw_pixel([6, 8], gpu.GPU.RGB8, [255, 255, 0])  # altera pixel (u, v, tipo, r, g, b)
-
-
 
     @staticmethod
     def triangleSet(point, colors):
