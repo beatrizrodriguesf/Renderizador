@@ -15,6 +15,7 @@ import time         # Para operações com tempo
 import gpu          # Simula os recursos de uma GPU
 import math         # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
+from functions import quater_rotation
 
 class GL:
     """Classe que representa a biblioteca gráfica (Graphics Library)."""
@@ -23,6 +24,8 @@ class GL:
     height = 600  # altura da tela
     near = 0.01   # plano de corte próximo
     far = 1000    # plano de corte distante
+
+    matrizes = {'transform_in': [], 'viewpoint': [], 'perspective': []}
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
@@ -154,7 +157,9 @@ class GL:
         for value in colors['emissiveColor']:
             color.append(int(value*255))
         
-        for i in range(0, len(vertices), 6):
+        gpu.GPU.draw_pixel([2,2], gpu.GPU.RGB8, color)
+        
+        for i in range(0, len(vertices)-5, 6):
 
             p0 = [vertices[i], vertices[i+1]]
             p1 = [vertices[i+2], vertices[i+3]]
@@ -197,8 +202,34 @@ class GL:
         print("TriangleSet : pontos = {0}".format(point)) # imprime no terminal pontos
         print("TriangleSet : colors = {0}".format(colors)) # imprime no terminal as cores
 
+        triangles = []
+        for i in range(0, len(point)-2, 3):
+            coords = np.array([[point[i]], [point[i+1]], [point[i+2]], [1]])
+
+            # Triângulo posicionado e rotacionado pelo transform
+            coordsTransformed = np.matmul(GL.matrizes['transform_in'], coords)
+
+            # Triângulo no ponto de vista da camera
+            coordsCamera = np.matmul(GL.matrizes['viewpoint'], coordsTransformed)
+
+            # Triângulo projetado no NDC e normalizado
+            coordsPerspective = np.matmul(GL.matrizes['perspective'], coordsCamera)
+            coordsNormalized = coordsPerspective/coordsPerspective[3]
+            print(coordsNormalized)
+
+            # Triângulo mapeado para coordenadas da tela
+            mTela = np.array([[GL.width/2, 0, 0, GL.width/2],
+                               [0, -GL.height/2, 0, GL.height/2],
+                               [0, 0, 1, 0],
+                               [0, 0, 0, 1]])
+            coordsTela = np.matmul(mTela, coordsNormalized)
+            triangles.append(coordsTela[0][0])
+            triangles.append(coordsTela[1][0])
+
+        GL.triangleSet2D(triangles, colors)
+
         # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        # gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
 
     @staticmethod
     def viewpoint(position, orientation, fieldOfView):
@@ -212,6 +243,28 @@ class GL:
         print("position = {0} ".format(position), end='')
         print("orientation = {0} ".format(orientation), end='')
         print("fieldOfView = {0} ".format(fieldOfView))
+
+        # inverte translation
+        invTranslation = np.array([[1,0,0,-position[0]],[0,1,0,-position[1]],[0,0,1,-position[2]],[0,0,0,1]])
+
+        # inverte Rotation
+        mRotation = quater_rotation(orientation)
+        invRotation = np.linalg.inv(mRotation)
+
+        # matriz de Visualização
+        mView = np.matmul(invRotation, invTranslation)
+
+        # Aplicando fieldOfView
+        fovy = 2*math.atan(math.tan(fieldOfView/2)*(GL.height/math.sqrt(GL.height**2 + GL.width**2)))
+        top = GL.near*math.tan(fovy)
+        right = top*(GL.width/GL.height)
+        P = np.array([[GL.near/right, 0, 0, 0],
+             [0, GL.near/top, 0, 0],
+             [0, 0, -(GL.far + GL.near)/(GL.far - GL.near), -2*GL.far*GL.near/(GL.far - GL.near)],
+             [0, 0, -1, 0]])
+        
+        GL.matrizes['viewpoint'] = mView
+        GL.matrizes['perspective'] = P
 
     @staticmethod
     def transform_in(translation, scale, rotation):
@@ -233,6 +286,17 @@ class GL:
         if rotation:
             print("rotation = {0} ".format(rotation), end='') # imprime no terminal
         print("")
+
+        # matriz de translação
+        mTranslation = np.array([[1,0,0,translation[0]],[0,1,0,translation[1]],[0,0,1,translation[2]],[0,0,0,1]])
+
+        # matriz de Escala
+        mScale = np.array([[scale[0],0,0,0], [0,scale[1],0,0], [0,0,scale[2],0], [0,0,0,1]])
+
+        # matriz de Rotação
+        mRotation = quater_rotation(rotation)
+        
+        GL.matrizes['transform_in'] = np.matmul(mTranslation, np.matmul(mRotation, mScale))
 
     @staticmethod
     def transform_out():
