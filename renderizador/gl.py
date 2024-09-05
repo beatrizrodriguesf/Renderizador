@@ -24,8 +24,8 @@ class GL:
     height = 600  # altura da tela
     near = 0.01   # plano de corte próximo
     far = 1000    # plano de corte distante
-
-    matrizes = {'transform_in': [], 'viewpoint': [], 'perspective': []}
+    
+    matrizes = {'transform_in': np.identity(4), 'viewpoint': np.identity(4)}
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
@@ -74,9 +74,6 @@ class GL:
 
         for i in range(0, len(lineSegments)-2, 2):
 
-            print(f"LineSegments: {lineSegments}")
-            print(f"{color}")
-
             x1 = lineSegments[i]
             y1 = lineSegments[i+1]
             x2 = lineSegments[i+2]
@@ -123,9 +120,6 @@ class GL:
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o Circle2D
         # você pode assumir o desenho das linhas com a cor emissiva (emissiveColor).
 
-        print("Circle2D : radius = {0}".format(radius)) # imprime no terminal
-        print("Circle2D : colors = {0}".format(colors)) # imprime no terminal as cores
-
         color = []
         for value in colors['emissiveColor']:
             color.append(int(value*255))
@@ -150,14 +144,10 @@ class GL:
         # quantidade de pontos é sempre multiplo de 3, ou seja, 6 valores ou 12 valores, etc.
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
         # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
-        print("TriangleSet2D : vertices = {0}".format(vertices)) # imprime no terminal
-        print("TriangleSet2D : colors = {0}".format(colors)) # imprime no terminal as cores
         
         color = []
         for value in colors['emissiveColor']:
             color.append(int(value*255))
-        
-        gpu.GPU.draw_pixel([2,2], gpu.GPU.RGB8, color)
         
         for i in range(0, len(vertices)-5, 6):
 
@@ -169,13 +159,32 @@ class GL:
             n1 = [(p1[1] - p0[1]), -(p1[0] - p0[0])]
             n2 = [(p2[1] - p1[1]), -(p2[0] - p1[0])]
 
-            xmin = round(min([p0[0], p1[0], p2[0]]))
-            xmax = round(max([p0[0], p1[0], p2[0]]))
-            ymin = round(min([p0[1], p1[1], p2[1]]))
-            ymax = round(max([p0[1], p1[1], p2[1]]))
+            xmin = int(min([p0[0], p1[0], p2[0]]))
+            xmax = int(max([p0[0], p1[0], p2[0]]))
+            ymin = int(min([p0[1], p1[1], p2[1]]))
+            ymax = int(max([p0[1], p1[1], p2[1]]))
 
             for x in range(xmin, xmax):
-                for y in range(ymin, ymax):
+                y_lista = []
+                if (p0[0] != p2[0]):
+                    y = int((p2[1]-p0[1])*(x-p0[0])/(p2[0]-p0[0]) + p0[1])
+                    if y >= ymin and y <= ymax:
+                        y_lista.append(y)
+                if (p0[0] != p1[0]):
+                    y = int((p1[1]-p0[1])*(x-p0[0])/(p1[0]-p0[0]) + p0[1])
+                    if y >= ymin and y <= ymax:
+                        y_lista.append(y)
+                if (p1[0] != p2[0]):
+                    y = int((p2[1]-p1[1])*(x-p1[0])/(p2[0]-p1[0]) + p1[1])
+                    if y >= ymin and y <= ymax:
+                        y_lista.append(y)
+                if len(y_lista) == 0:
+                    yi = ymin
+                    yf = ymax
+                else:
+                    yi = min(y_lista)
+                    yf = max(y_lista)
+                for y in range(yi, yf+1):
                     r0 = (x+0.5-p2[0])*n0[0] + (y+0.5-p2[1])*n0[1]
                     r1 = (x+0.5-p0[0])*n1[0] + (y+0.5-p0[1])*n1[1]
                     r2 = (x+0.5-p1[0])*n2[0] + (y+0.5-p1[1])*n2[1]
@@ -198,10 +207,6 @@ class GL:
         # (emissiveColor), conforme implementar novos materias você deverá suportar outros
         # tipos de cores.
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("TriangleSet : pontos = {0}".format(point)) # imprime no terminal pontos
-        print("TriangleSet : colors = {0}".format(colors)) # imprime no terminal as cores
-
         triangles = []
         for i in range(0, len(point)-2, 3):
             coords = np.array([[point[i]], [point[i+1]], [point[i+2]], [1]])
@@ -209,13 +214,9 @@ class GL:
             # Triângulo posicionado e rotacionado pelo transform
             coordsTransformed = np.matmul(GL.matrizes['transform_in'], coords)
 
-            # Triângulo no ponto de vista da camera
+            # Triângulo no ponto de vista da camera projetado no NDC e normalizado
             coordsCamera = np.matmul(GL.matrizes['viewpoint'], coordsTransformed)
-
-            # Triângulo projetado no NDC e normalizado
-            coordsPerspective = np.matmul(GL.matrizes['perspective'], coordsCamera)
-            coordsNormalized = coordsPerspective/coordsPerspective[3]
-            print(coordsNormalized)
+            coordsNormalized = coordsCamera/coordsCamera[3]
 
             # Triângulo mapeado para coordenadas da tela
             mTela = np.array([[GL.width/2, 0, 0, GL.width/2],
@@ -228,21 +229,12 @@ class GL:
 
         GL.triangleSet2D(triangles, colors)
 
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        # gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
-
     @staticmethod
     def viewpoint(position, orientation, fieldOfView):
         """Função usada para renderizar (na verdade coletar os dados) de Viewpoint."""
         # Na função de viewpoint você receberá a posição, orientação e campo de visão da
         # câmera virtual. Use esses dados para poder calcular e criar a matriz de projeção
         # perspectiva para poder aplicar nos pontos dos objetos geométricos.
-
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("Viewpoint : ", end='')
-        print("position = {0} ".format(position), end='')
-        print("orientation = {0} ".format(orientation), end='')
-        print("fieldOfView = {0} ".format(fieldOfView))
 
         # inverte translation
         invTranslation = np.array([[1,0,0,-position[0]],[0,1,0,-position[1]],[0,0,1,-position[2]],[0,0,0,1]])
@@ -263,8 +255,7 @@ class GL:
              [0, 0, -(GL.far + GL.near)/(GL.far - GL.near), -2*GL.far*GL.near/(GL.far - GL.near)],
              [0, 0, -1, 0]])
         
-        GL.matrizes['viewpoint'] = mView
-        GL.matrizes['perspective'] = P
+        GL.matrizes['viewpoint'] = np.matmul(P, mView)
 
     @staticmethod
     def transform_in(translation, scale, rotation):
@@ -276,16 +267,6 @@ class GL:
         # do objeto ao redor do eixo x, y, z por t radianos, seguindo a regra da mão direita.
         # Quando se entrar em um nó transform se deverá salvar a matriz de transformação dos
         # modelos do mundo em alguma estrutura de pilha.
-
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("Transform : ", end='')
-        if translation:
-            print("translation = {0} ".format(translation), end='') # imprime no terminal
-        if scale:
-            print("scale = {0} ".format(scale), end='') # imprime no terminal
-        if rotation:
-            print("rotation = {0} ".format(rotation), end='') # imprime no terminal
-        print("")
 
         # matriz de translação
         mTranslation = np.array([[1,0,0,translation[0]],[0,1,0,translation[1]],[0,0,1,translation[2]],[0,0,0,1]])
