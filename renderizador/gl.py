@@ -25,7 +25,7 @@ class GL:
     near = 0.01   # plano de corte próximo
     far = 1000    # plano de corte distante
     
-    matrizes = {'transform_in': np.identity(4), 'viewpoint': np.identity(4)}
+    matrizes = {'transform': [np.identity(4)], 'viewpoint': np.identity(4)}
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
@@ -212,7 +212,7 @@ class GL:
             coords = np.array([[point[i]], [point[i+1]], [point[i+2]], [1]])
 
             # Triângulo posicionado e rotacionado pelo transform
-            coordsTransformed = np.matmul(GL.matrizes['transform_in'], coords)
+            coordsTransformed = np.matmul(GL.matrizes['transform'][-1], coords)
 
             # Triângulo no ponto de vista da camera projetado no NDC e normalizado
             coordsCamera = np.matmul(GL.matrizes['viewpoint'], coordsTransformed)
@@ -278,8 +278,9 @@ class GL:
 
         # matriz de Rotação
         mRotation = quater_rotation(rotation)
+        mTransform = np.matmul(mTranslation, np.matmul(mRotation, mScale))
         
-        GL.matrizes['transform_in'] = np.matmul(mTranslation, np.matmul(mRotation, mScale))
+        GL.matrizes['transform'].append(np.matmul(GL.matrizes['transform'][-1], mTransform))
 
     @staticmethod
     def transform_out():
@@ -289,6 +290,7 @@ class GL:
         # deverá recuperar a matriz de transformação dos modelos do mundo da estrutura de
         # pilha implementada.
 
+        GL.matrizes['transform'].pop()
         # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
         print("Saindo de Transform")
 
@@ -306,15 +308,15 @@ class GL:
         # depois 2, 3 e 4, e assim por diante. Cuidado com a orientação dos vértices, ou seja,
         # todos no sentido horário ou todos no sentido anti-horário, conforme especificado.
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("TriangleStripSet : pontos = {0} ".format(point), end='')
-        for i, strip in enumerate(stripCount):
-            print("strip[{0}] = {1} ".format(i, strip), end='')
-        print("")
-        print("TriangleStripSet : colors = {0}".format(colors)) # imprime no terminal as cores
-
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        for i in range(0, stripCount[0]*3 - 6, 3):
+            if i % 2 == 0:
+                list = point[i:i+9]
+            else:
+                p1 = point[i:i+3]
+                p2 = point[i+3:i+6]
+                p3 = point[i+6:i+9]
+                list = p1 + p3 + p2
+            GL.triangleSet(list, colors)
 
     @staticmethod
     def indexedTriangleStripSet(point, index, colors):
@@ -330,13 +332,21 @@ class GL:
         # primeiro triângulo será com os vértices 0, 1 e 2, depois serão os vértices 1, 2 e 3,
         # depois 2, 3 e 4, e assim por diante. Cuidado com a orientação dos vértices, ou seja,
         # todos no sentido horário ou todos no sentido anti-horário, conforme especificado.
-
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("IndexedTriangleStripSet : pontos = {0}, index = {1}".format(point, index))
-        print("IndexedTriangleStripSet : colors = {0}".format(colors)) # imprime as cores
-
-        # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        fim = False
+        i = 0
+        while not fim:
+            p1 = point[(index[i]*3):(index[i]*3 + 3)]
+            p2 = point[(index[i+1]*3):(index[i+1]*3 + 3)]
+            p3 = point[(index[i+2]*3):(index[i+2]*3 + 3)]
+            if index[i] % 2 == 0:
+                list = p1 + p2 + p3
+            else:
+                list = p1 + p3 + p2
+            print(list)
+            GL.triangleSet(list, colors)
+            i += 1
+            if (index[i] == -1 or index[i+1] == -1 or index[i+2] == -1):
+                fim = True
 
     @staticmethod
     def box(size, colors):
