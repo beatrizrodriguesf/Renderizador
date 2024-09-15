@@ -316,7 +316,7 @@ class GL:
         for value in stripCount:
             for t in range(value-2):
                 i = inicio + t*3
-                if i % 2 == 0:
+                if t % 2 == 0:
                     list = point[i:i+9]
                 else:
                     p1 = point[i:i+3]
