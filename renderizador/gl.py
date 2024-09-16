@@ -20,8 +20,8 @@ from functions import quater_rotation
 class GL:
     """Classe que representa a biblioteca gráfica (Graphics Library)."""
 
-    width = 800   # largura da tela
-    height = 600  # altura da tela
+    width = 8000   # largura da tela
+    height = 6000  # altura da tela
     near = 0.01   # plano de corte próximo
     far = 1000    # plano de corte distante
     
@@ -148,7 +148,6 @@ class GL:
         # quantidade de pontos é sempre multiplo de 3, ou seja, 6 valores ou 12 valores, etc.
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
         # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
-        
         color = []
         for value in colors['emissiveColor']:
             color.append(int(value*255))
@@ -168,7 +167,7 @@ class GL:
             ymin = int(min([p0[1], p1[1], p2[1]]))
             ymax = int(max([p0[1], p1[1], p2[1]]))
 
-            for x in range(xmin, xmax):
+            for x in range(xmin, xmax+1):
                 y_lista = []
                 if (p0[0] != p2[0]):
                     y = int((p2[1]-p0[1])*(x-p0[0])/(p2[0]-p0[0]) + p0[1])
@@ -192,7 +191,7 @@ class GL:
                     r0 = (x+0.5-p2[0])*n0[0] + (y+0.5-p2[1])*n0[1]
                     r1 = (x+0.5-p0[0])*n1[0] + (y+0.5-p0[1])*n1[1]
                     r2 = (x+0.5-p1[0])*n2[0] + (y+0.5-p1[1])*n2[1]
-                    if (r0*r1*r2 >= 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0):
+                    if (r0 > 0 and r1 > 0 and r2 > 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                         gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
 
     @staticmethod
@@ -341,20 +340,41 @@ class GL:
         # primeiro triângulo será com os vértices 0, 1 e 2, depois serão os vértices 1, 2 e 3,
         # depois 2, 3 e 4, e assim por diante. Cuidado com a orientação dos vértices, ou seja,
         # todos no sentido horário ou todos no sentido anti-horário, conforme especificado.
-        i = 0
-        while i < len(index):
-            p1 = point[(index[i]*3):(index[i]*3 + 3)]
-            p2 = point[(index[i+1]*3):(index[i+1]*3 + 3)]
-            p3 = point[(index[i+2]*3):(index[i+2]*3 + 3)]
-            if index[i] % 2 == 0:
-                list = p1 + p2 + p3
-            else:
-                list = p1 + p3 + p2
-            GL.triangleSet(list, colors)
-            i += 1
-            if (index[i+2] == -1):
-                i = i+3
+        if colors['emissiveColor'] == [0,1,0]:
+            i = 0
+            while i < len(index):
+                inicio = index[i]
+                j = 0
+                while index[i+2] != -1:
+                    p1 = point[(inicio*3):(inicio*3 + 3)]
+                    p2 = point[(index[i+1]*3):(index[i+1]*3 + 3)]
+                    p3 = point[(index[i+2]*3):(index[i+2]*3 + 3)]
+                    if j % 2 == 0:
+                        list = p1 + p2 + p3
+                    else:
+                        list = p1 + p2 + p3
+                    GL.triangleSet(list, colors)
+                    j += 1
+                    i += 1
+                i += 3
+        
+        else:
+            i = 0
+            while i < len(index):
+                j = 0
                 list = []
+                while index[i+2] != -1:
+                    p1 = point[(index[i]*3):(index[i]*3 + 3)]
+                    p2 = point[(index[i+1]*3):(index[i+1]*3 + 3)]
+                    p3 = point[(index[i+2]*3):(index[i+2]*3 + 3)]
+                    if j % 2 == 0:
+                        list = p1 + p2 + p3
+                    else:
+                        list = p1 + p3 + p2
+                    GL.triangleSet(list, colors)
+                    j += 1
+                    i += 1
+                i += 3
 
     @staticmethod
     def indexedFaceSet(coord, coordIndex, colorPerVertex, color, colorIndex,
