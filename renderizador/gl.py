@@ -25,7 +25,10 @@ class GL:
     near = 0.01   # plano de corte próximo
     far = 1000    # plano de corte distante
     
-    matrizes = {'transform': [np.identity(4)], 'viewpoint': np.identity(4)}
+    matrizes = {'transform': [np.identity(4)], 'viewCamera': np.identity(4), 'NDC': np.identity(4)}
+    z_points = []
+    colorPerVertex = False
+    z_buffer = []
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
@@ -148,9 +151,6 @@ class GL:
         # quantidade de pontos é sempre multiplo de 3, ou seja, 6 valores ou 12 valores, etc.
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
         # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
-        color = []
-        for value in colors['emissiveColor']:
-            color.append(int(value*255))
         
         for i in range(0, len(vertices)-5, 6):
 
@@ -191,8 +191,24 @@ class GL:
                     r0 = (x+0.5-p2[0])*n0[0] + (y+0.5-p2[1])*n0[1]
                     r1 = (x+0.5-p0[0])*n1[0] + (y+0.5-p0[1])*n1[1]
                     r2 = (x+0.5-p1[0])*n2[0] + (y+0.5-p1[1])*n2[1]
-                    if (r0 > 0 and r1 > 0 and r2 > 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0):
+                    if (r0 >= 0 and r1 >= 0 and r2 >= 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0) and GL.colorPerVertex:
+                        a = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
+                        b = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
+                        c = 1-a-b
+                        z = 1/((a/GL.z_points[0])+(b/GL.z_points[1])+(c/GL.z_points[2]))
+                        colorR = z*(colors['emissiveColor'][0]*(a/GL.z_points[0]) + colors['emissiveColor'][3]*(b/GL.z_points[1]) + colors['emissiveColor'][6]*(c/GL.z_points[2]))
+                        colorG = z*(colors['emissiveColor'][1]*(a/GL.z_points[0]) + colors['emissiveColor'][4]*(b/GL.z_points[1]) + colors['emissiveColor'][7]*(c/GL.z_points[2]))
+                        colorB = z*(colors['emissiveColor'][2]*(a/GL.z_points[0]) + colors['emissiveColor'][5]*(b/GL.z_points[1]) + colors['emissiveColor'][8]*(c/GL.z_points[2]))
+                        color = [int(colorR*255), int(colorG*255), int(colorB*255)]
                         gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
+                    elif (r0 >= 0 and r1 >= 0 and r2 >= 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0):
+                        color = []
+                        for value in colors['emissiveColor']:
+                            color.append(int(value*255))
+                        gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
+
+        GL.z_points = []
+        GL.colorPerVertex = False
 
     @staticmethod
     def triangleSet(point, colors):
@@ -219,8 +235,11 @@ class GL:
             coordsTransformed = np.matmul(GL.matrizes['transform'][-1], coords)
 
             # Triângulo no ponto de vista da camera projetado no NDC e normalizado
-            coordsCamera = np.matmul(GL.matrizes['viewpoint'], coordsTransformed)
-            coordsNormalized = coordsCamera/coordsCamera[3]
+            coordsCamera = np.matmul(GL.matrizes['viewCamera'], coordsTransformed)
+            GL.z_points.append(coordsCamera[2][0])
+
+            coordsNDC = np.matmul(GL.matrizes['NDC'], coordsCamera)
+            coordsNormalized = coordsNDC/coordsNDC[3]
 
             # Triângulo mapeado para coordenadas da tela
             mTela = np.array([[GL.width/2, 0, 0, GL.width/2],
@@ -249,6 +268,7 @@ class GL:
 
         # matriz de Visualização
         mView = np.matmul(invRotation, invTranslation)
+        GL.matrizes['viewCamera'] = mView
 
         # Aplicando fieldOfView
         fovy = 2*math.atan(math.tan(fieldOfView/2)*(GL.height/math.sqrt(GL.height**2 + GL.width**2)))
@@ -259,7 +279,7 @@ class GL:
              [0, 0, -(GL.far + GL.near)/(GL.far - GL.near), -2*GL.far*GL.near/(GL.far - GL.near)],
              [0, 0, -1, 0]])
         
-        GL.matrizes['viewpoint'] = np.matmul(P, mView)
+        GL.matrizes['NDC'] = P
 
     @staticmethod
     def transform_in(translation, scale, rotation):
@@ -340,41 +360,23 @@ class GL:
         # primeiro triângulo será com os vértices 0, 1 e 2, depois serão os vértices 1, 2 e 3,
         # depois 2, 3 e 4, e assim por diante. Cuidado com a orientação dos vértices, ou seja,
         # todos no sentido horário ou todos no sentido anti-horário, conforme especificado.
-        if colors['emissiveColor'] == [0,1,0]:
-            i = 0
-            while i < len(index):
-                inicio = index[i]
-                j = 0
-                while index[i+2] != -1:
-                    p1 = point[(inicio*3):(inicio*3 + 3)]
-                    p2 = point[(index[i+1]*3):(index[i+1]*3 + 3)]
-                    p3 = point[(index[i+2]*3):(index[i+2]*3 + 3)]
-                    if j % 2 == 0:
-                        list = p1 + p2 + p3
-                    else:
-                        list = p1 + p2 + p3
-                    GL.triangleSet(list, colors)
-                    j += 1
-                    i += 1
-                i += 3
-        
-        else:
-            i = 0
-            while i < len(index):
-                j = 0
-                list = []
-                while index[i+2] != -1:
-                    p1 = point[(index[i]*3):(index[i]*3 + 3)]
-                    p2 = point[(index[i+1]*3):(index[i+1]*3 + 3)]
-                    p3 = point[(index[i+2]*3):(index[i+2]*3 + 3)]
-                    if j % 2 == 0:
-                        list = p1 + p2 + p3
-                    else:
-                        list = p1 + p3 + p2
-                    GL.triangleSet(list, colors)
-                    j += 1
-                    i += 1
-                i += 3
+
+        i = 0
+        while i < len(index):
+            j = 0
+            list = []
+            while index[i+2] != -1:
+                p1 = point[(index[i]*3):(index[i]*3 + 3)]
+                p2 = point[(index[i+1]*3):(index[i+1]*3 + 3)]
+                p3 = point[(index[i+2]*3):(index[i+2]*3 + 3)]
+                if j % 2 == 0:
+                    list = p1 + p2 + p3
+                else:
+                    list = p1 + p3 + p2
+                GL.triangleSet(list, colors)
+                j += 1
+                i += 1
+            i += 3
 
     @staticmethod
     def indexedFaceSet(coord, coordIndex, colorPerVertex, color, colorIndex,
@@ -400,7 +402,20 @@ class GL:
         # cor da textura conforme a posição do mapeamento. Dentro da classe GPU já está
         # implementadado um método para a leitura de imagens.
 
-        GL.indexedTriangleStripSet(coord, coordIndex, colors)
+        i = 0
+        while i < len(coordIndex):
+            inicio = coordIndex[i]
+            while coordIndex[i+2] != -1:
+                p1 = coord[(inicio*3):(inicio*3 + 3)]
+                p2 = coord[(coordIndex[i+1]*3):(coordIndex[i+1]*3 + 3)]
+                p3 = coord[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
+                list = p1 + p2 + p3
+                if colorPerVertex and color:
+                    GL.colorPerVertex = True
+                    colors['emissiveColor'] = color[(inicio*3):(inicio*3) + 3] + color[(coordIndex[i+1]*3):(coordIndex[i+1]*3 + 3)] + color[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
+                GL.triangleSet(list, colors)
+                i += 1
+            i += 3
 
         # Os prints abaixo são só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
         # print("IndexedFaceSet : ")
