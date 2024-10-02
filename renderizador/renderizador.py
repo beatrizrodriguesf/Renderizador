@@ -41,13 +41,16 @@ class Renderizador:
         # Configurando color buffers para exibição na tela
 
         # Cria uma (1) posição de FrameBuffer na GPU
-        fbo = gpu.GPU.gen_framebuffers(1)
+        fbo = gpu.GPU.gen_framebuffers(2) # 2
 
         # Define o atributo FRONT como o FrameBuffe principal
-        self.framebuffers["FRONT"] = fbo[0]
+        self.framebuffers["FRONT"] = fbo[1]
+        self.framebuffers["COLOR"] = fbo[0]
 
         # Define que a posição criada será usada para desenho e leitura
         gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["FRONT"])
+        gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["COLOR"])
+
         # Opções:
         # - DRAW_FRAMEBUFFER: Faz o bind só para escrever no framebuffer
         # - READ_FRAMEBUFFER: Faz o bind só para leitura no framebuffer
@@ -64,6 +67,14 @@ class Renderizador:
             self.height
         )
 
+        gpu.GPU.framebuffer_storage(
+            self.framebuffers["COLOR"],
+            gpu.GPU.COLOR_ATTACHMENT,
+            gpu.GPU.RGB8,
+            self.width*2,
+            self.height*2
+        )
+
         # Descomente as seguintes linhas se for usar um Framebuffer para profundidade
         # gpu.GPU.framebuffer_storage(
         #     self.framebuffers["FRONT"],
@@ -72,7 +83,7 @@ class Renderizador:
         #     self.width,
         #     self.height
         # )
-    
+
         # Opções:
         # - COLOR_ATTACHMENT: alocações para as cores da imagem renderizada
         # - DEPTH_ATTACHMENT: alocações para as profundidades da imagem renderizada
@@ -100,6 +111,9 @@ class Renderizador:
 
         # Limpa o frame buffers atual
         gpu.GPU.clear_buffer()
+        gpu.GPU.draw_framebuffer = 1
+        gpu.GPU.clear_buffer()
+        gpu.GPU.draw_framebuffer = 0
 
         # Recursos que podem ser úteis:
         # Define o valor do pixel no framebuffer: draw_pixel(coord, mode, data)
@@ -113,9 +127,24 @@ class Renderizador:
         # ao final da renderização de um frame. Como por exemplo, executar
         # downscaling da imagem.
 
+        gpu.GPU.draw_framebuffer = 1
+        gpu.GPU.read_framebuffer = 0
+
+        for i in range (0,(2*self.width)-1, 2):
+            for j in range (0,(2*self.height)-1, 2):
+                color1 =  gpu.GPU.read_pixel([i,j], gpu.GPU.RGB8)
+                color2 = gpu.GPU.read_pixel([i+1,j], gpu.GPU.RGB8)
+                color3 = gpu.GPU.read_pixel([i,j+1], gpu.GPU.RGB8)
+                color4 = gpu.GPU.read_pixel([i+1,j+1], gpu.GPU.RGB8)
+                r = (int(color1[0]) + int(color2[0]) + int(color3[0]) + int(color4[0]))/4
+                g = (int(color1[1]) + int(color2[1]) + int(color3[1]) + int(color4[1]))/4
+                b = (int(color1[2]) + int(color2[2]) + int(color3[2]) + int(color4[2]))/4
+                gpu.GPU.draw_pixel([int(i/2),int(j/2)], gpu.GPU.RGB8, [r,g,b])
+
+        gpu.GPU.read_framebuffer = 1
         # Método para a troca dos buffers (NÃO IMPLEMENTADO)
         # Esse método será utilizado na fase de implementação de animações
-        gpu.GPU.swap_buffers()
+        # gpu.GPU.swap_buffers()
 
     def mapping(self):
         """Mapeamento de funções para as rotinas de renderização."""
