@@ -15,7 +15,7 @@ import time         # Para operações com tempo
 import gpu          # Simula os recursos de uma GPU
 import math         # Funções matemáticas
 import numpy as np  # Biblioteca do Numpy
-from functions import quater_rotation
+from functions import *
 
 class GL:
     """Classe que representa a biblioteca gráfica (Graphics Library)."""
@@ -27,14 +27,12 @@ class GL:
     
     matrizes = {'transform': [np.identity(4)], 'viewCamera': np.identity(4), 'NDC': np.identity(4)}
     z_points = []
-    colorPerVertex = False
-    z_buffer = []
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
         """Definr parametros para câmera de razão de aspecto, plano próximo e distante."""
-        GL.width = width
-        GL.height = height
+        GL.width = width*2
+        GL.height = height*2
         GL.near = near
         GL.far = far
 
@@ -151,64 +149,21 @@ class GL:
         # quantidade de pontos é sempre multiplo de 3, ou seja, 6 valores ou 12 valores, etc.
         # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
         # você pode assumir inicialmente o desenho das linhas com a cor emissiva (emissiveColor).
+
+        for i in range(len(vertices)):
+            vertices[i] = vertices[i]*2
+        
+        color = []
+        for value in colors['emissiveColor']:
+            color.append(int(value*255))
         
         for i in range(0, len(vertices)-5, 6):
-
-            p0 = [vertices[i], vertices[i+1]]
-            p1 = [vertices[i+2], vertices[i+3]]
-            p2 = [vertices[i+4], vertices[i+5]]
-
-            n0 = [(p0[1] - p2[1]), -(p0[0] - p2[0])]
-            n1 = [(p1[1] - p0[1]), -(p1[0] - p0[0])]
-            n2 = [(p2[1] - p1[1]), -(p2[0] - p1[0])]
-
-            xmin = int(min([p0[0], p1[0], p2[0]]))
-            xmax = int(max([p0[0], p1[0], p2[0]]))
-            ymin = int(min([p0[1], p1[1], p2[1]]))
-            ymax = int(max([p0[1], p1[1], p2[1]]))
-
-            for x in range(xmin, xmax+1):
-                y_lista = []
-                if (p0[0] != p2[0]):
-                    y = int((p2[1]-p0[1])*(x-p0[0])/(p2[0]-p0[0]) + p0[1])
-                    if y >= ymin and y <= ymax:
-                        y_lista.append(y)
-                if (p0[0] != p1[0]):
-                    y = int((p1[1]-p0[1])*(x-p0[0])/(p1[0]-p0[0]) + p0[1])
-                    if y >= ymin and y <= ymax:
-                        y_lista.append(y)
-                if (p1[0] != p2[0]):
-                    y = int((p2[1]-p1[1])*(x-p1[0])/(p2[0]-p1[0]) + p1[1])
-                    if y >= ymin and y <= ymax:
-                        y_lista.append(y)
-                if len(y_lista) == 0:
-                    yi = ymin
-                    yf = ymax
-                else:
-                    yi = min(y_lista)
-                    yf = max(y_lista)
-                for y in range(yi, yf+1):
-                    r0 = (x+0.5-p2[0])*n0[0] + (y+0.5-p2[1])*n0[1]
-                    r1 = (x+0.5-p0[0])*n1[0] + (y+0.5-p0[1])*n1[1]
-                    r2 = (x+0.5-p1[0])*n2[0] + (y+0.5-p1[1])*n2[1]
-                    if (r0 >= 0 and r1 >= 0 and r2 >= 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0) and GL.colorPerVertex:
-                        a = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
-                        b = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
-                        c = 1-a-b
-                        z = 1/((a/GL.z_points[0])+(b/GL.z_points[1])+(c/GL.z_points[2]))
-                        colorR = z*(colors['emissiveColor'][0]*(a/GL.z_points[0]) + colors['emissiveColor'][3]*(b/GL.z_points[1]) + colors['emissiveColor'][6]*(c/GL.z_points[2]))
-                        colorG = z*(colors['emissiveColor'][1]*(a/GL.z_points[0]) + colors['emissiveColor'][4]*(b/GL.z_points[1]) + colors['emissiveColor'][7]*(c/GL.z_points[2]))
-                        colorB = z*(colors['emissiveColor'][2]*(a/GL.z_points[0]) + colors['emissiveColor'][5]*(b/GL.z_points[1]) + colors['emissiveColor'][8]*(c/GL.z_points[2]))
-                        color = [int(colorR*255), int(colorG*255), int(colorB*255)]
-                        gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
-                    elif (r0 >= 0 and r1 >= 0 and r2 >= 0) and (x < GL.width and y < GL.height and x >= 0 and y >= 0):
-                        color = []
-                        for value in colors['emissiveColor']:
-                            color.append(int(value*255))
-                        gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
-
-        GL.z_points = []
-        GL.colorPerVertex = False
+            pontos = pontos_in_triangle(vertices[i:i+6])
+            for ponto in pontos:
+                x = ponto[0]
+                y = ponto[1]
+                if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
+                    gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
 
     @staticmethod
     def triangleSet(point, colors):
@@ -249,7 +204,7 @@ class GL:
             coordsTela = np.matmul(mTela, coordsNormalized)
             triangles.append(coordsTela[0][0])
             triangles.append(coordsTela[1][0])
-
+            
         GL.triangleSet2D(triangles, colors)
 
     @staticmethod
@@ -412,9 +367,8 @@ class GL:
                 p3 = coord[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
                 list = p1 + p2 + p3
                 if colorPerVertex and color:
-                    GL.colorPerVertex = True
                     colors['emissiveColor'] = color[(inicio*3):(inicio*3) + 3] + color[(coordIndex[i+1]*3):(coordIndex[i+1]*3 + 3)] + color[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
-                GL.triangleSet(list, colors)
+                #GL.triangleSet(list, colors)
                 i += 1
             i += 3
 
