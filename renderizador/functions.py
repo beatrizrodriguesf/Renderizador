@@ -85,3 +85,20 @@ def triangle_projection(point, matrizes, width, height):
             triangles.append(coordsTela[0][0])
             triangles.append(coordsTela[1][0])
         return triangles, z_points
+
+def nivel_image(image):
+    new_image = []
+    shape = [len(image), len(image[0])]
+    for i in range(0,shape[0]-1, 2):
+        linha = []
+        for j in range(0,shape[1]-1,2):
+            color1 = image[i][j]
+            color2 = image[i+1][j]
+            color3 = image[i][j+1]
+            color4 = image[i+1][j+1]
+            R = (int(color1[0]) + int(color2[0]) + int(color3[0]) + int(color4[0]))/4
+            G = (int(color1[1]) + int(color2[1]) + int(color3[1]) + int(color4[1]))/4
+            B = (int(color1[2]) + int(color2[2]) + int(color3[2]) + int(color4[2]))/4
+            linha.append([R,G,B])
+        new_image.append(linha)
+    return new_image
