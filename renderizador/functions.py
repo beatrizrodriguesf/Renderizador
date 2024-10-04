@@ -15,10 +15,9 @@ def quater_rotation(values):
     
     return matriz
 
-def pontos_in_triangle(vertices):
+def points_in_triangle(vertices):
     # Função que recebe os vértices de um triângulo e retorna uma lista de tuplas [x,y] dos pontos que estão
     # dentro do triângulo
-    
         pontos = []
         p0 = [vertices[0], vertices[1]]
         p1 = [vertices[2], vertices[3]]
@@ -53,6 +52,7 @@ def pontos_in_triangle(vertices):
             else:
                 yi = min(y_lista)
                 yf = max(y_lista)
+
             for y in range(yi, yf+1):
                 r0 = (x+0.5-p2[0])*n0[0] + (y+0.5-p2[1])*n0[1]
                 r1 = (x+0.5-p0[0])*n1[0] + (y+0.5-p0[1])*n1[1]
@@ -60,3 +60,28 @@ def pontos_in_triangle(vertices):
                 if (r0 >= 0 and r1 >= 0 and r2 >= 0):
                     pontos.append([x,y])
         return pontos
+
+def triangle_projection(point, matrizes, width, height):
+        z_points = []
+        triangles = []
+        for i in range(0, len(point)-2, 3):
+            coords = np.array([[point[i]], [point[i+1]], [point[i+2]], [1]])
+            # Triângulo posicionado e rotacionado pelo transform
+            coordsTransformed = np.matmul(matrizes['transform'][-1], coords)
+
+            # Triângulo no ponto de vista da camera projetado no NDC e normalizado
+            coordsCamera = np.matmul(matrizes['viewCamera'], coordsTransformed)
+            z_points.append(coordsCamera[2][0])
+
+            coordsNDC = np.matmul(matrizes['NDC'], coordsCamera)
+            coordsNormalized = coordsNDC/coordsNDC[3]
+
+            # Triângulo mapeado para coordenadas da tela
+            mTela = np.array([[width/4, 0, 0, width/4],
+                               [0, -height/4, 0, height/4],
+                               [0, 0, 1, 0],
+                               [0, 0, 0, 1]])
+            coordsTela = np.matmul(mTela, coordsNormalized)
+            triangles.append(coordsTela[0][0])
+            triangles.append(coordsTela[1][0])
+        return triangles, z_points

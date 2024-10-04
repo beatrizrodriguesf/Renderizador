@@ -26,7 +26,6 @@ class GL:
     far = 1000    # plano de corte distante
     
     matrizes = {'transform': [np.identity(4)], 'viewCamera': np.identity(4), 'NDC': np.identity(4)}
-    z_points = []
 
     @staticmethod
     def setup(width, height, near=0.01, far=1000):
@@ -158,7 +157,7 @@ class GL:
             color.append(int(value*255))
         
         for i in range(0, len(vertices)-5, 6):
-            pontos = pontos_in_triangle(vertices[i:i+6])
+            pontos = points_in_triangle(vertices[i:i+6])
             for ponto in pontos:
                 x = ponto[0]
                 y = ponto[1]
@@ -185,26 +184,23 @@ class GL:
         triangles = []
         for i in range(0, len(point)-2, 3):
             coords = np.array([[point[i]], [point[i+1]], [point[i+2]], [1]])
-
             # Triângulo posicionado e rotacionado pelo transform
             coordsTransformed = np.matmul(GL.matrizes['transform'][-1], coords)
 
             # Triângulo no ponto de vista da camera projetado no NDC e normalizado
             coordsCamera = np.matmul(GL.matrizes['viewCamera'], coordsTransformed)
-            GL.z_points.append(coordsCamera[2][0])
 
             coordsNDC = np.matmul(GL.matrizes['NDC'], coordsCamera)
             coordsNormalized = coordsNDC/coordsNDC[3]
 
             # Triângulo mapeado para coordenadas da tela
-            mTela = np.array([[GL.width/2, 0, 0, GL.width/2],
-                               [0, -GL.height/2, 0, GL.height/2],
+            mTela = np.array([[GL.width/4, 0, 0, GL.width/4],
+                               [0, -GL.height/4, 0, GL.height/4],
                                [0, 0, 1, 0],
                                [0, 0, 0, 1]])
             coordsTela = np.matmul(mTela, coordsNormalized)
             triangles.append(coordsTela[0][0])
             triangles.append(coordsTela[1][0])
-            
         GL.triangleSet2D(triangles, colors)
 
     @staticmethod
@@ -358,17 +354,50 @@ class GL:
         # cor da textura conforme a posição do mapeamento. Dentro da classe GPU já está
         # implementadado um método para a leitura de imagens.
 
+        print("FaceSet")
         i = 0
         while i < len(coordIndex):
             inicio = coordIndex[i]
+
             while coordIndex[i+2] != -1:
                 p1 = coord[(inicio*3):(inicio*3 + 3)]
                 p2 = coord[(coordIndex[i+1]*3):(coordIndex[i+1]*3 + 3)]
                 p3 = coord[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
                 list = p1 + p2 + p3
+
+                vertices, z_points = triangle_projection(list, GL.matrizes, GL.width, GL.height)
+
+                for j in range(len(vertices)):
+                    vertices[j] = vertices[j]*2
+                
+                points = points_in_triangle(vertices)
+                
+                for k in range(len(z_points)):
+                    z_points[k] = z_points[k]*2
+
                 if colorPerVertex and color:
-                    colors['emissiveColor'] = color[(inicio*3):(inicio*3) + 3] + color[(coordIndex[i+1]*3):(coordIndex[i+1]*3 + 3)] + color[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
-                #GL.triangleSet(list, colors)
+                    color0 = color[(inicio*3):(inicio*3) + 3]
+                    color1 = color[(coordIndex[i+1]*3):(coordIndex[i+1]*3 + 3)]
+                    color2 = color[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
+                    p0 = [vertices[0], vertices[1]]
+                    p1 = [vertices[2], vertices[3]]
+                    p2 = [vertices[4], vertices[5]]
+
+                    for point in points:
+                        x = point[0]
+                        y = point[1]
+                        a = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
+                        b = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
+                        c = 1-a-b
+                        z = 1/((a/z_points[0])+(b/z_points[1])+(c/z_points[2]))
+                        colorR = z*(color0[0]*(a/z_points[0]) + color1[0]*(b/z_points[1]) + color2[0]*(c/z_points[2]))
+                        colorG = z*(color0[1]*(a/z_points[0]) + color1[1]*(b/z_points[1]) + color2[1]*(c/z_points[2]))
+                        colorB = z*(color0[2]*(a/z_points[0]) + color1[2]*(b/z_points[1]) + color2[2]*(c/z_points[2]))
+                        colorPoint = [int(colorR*255), int(colorG*255), int(colorB*255)]
+
+                        if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
+                            gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, colorPoint)
+
                 i += 1
             i += 3
 
