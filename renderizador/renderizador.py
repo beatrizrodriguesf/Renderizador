@@ -41,15 +41,17 @@ class Renderizador:
         # Configurando color buffers para exibição na tela
 
         # Cria uma (1) posição de FrameBuffer na GPU
-        fbo = gpu.GPU.gen_framebuffers(2) # 2
+        fbo = gpu.GPU.gen_framebuffers(3) # 2
 
         # Define o atributo FRONT como o FrameBuffe principal
         self.framebuffers["FRONT"] = fbo[1]
         self.framebuffers["COLOR"] = fbo[0]
+        self.framebuffers["DEPTH"] = fbo[2]
 
         # Define que a posição criada será usada para desenho e leitura
         gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["FRONT"])
         gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["COLOR"])
+        gpu.GPU.bind_framebuffer(gpu.GPU.FRAMEBUFFER, self.framebuffers["DEPTH"])
 
         # Opções:
         # - DRAW_FRAMEBUFFER: Faz o bind só para escrever no framebuffer
@@ -76,13 +78,13 @@ class Renderizador:
         )
 
         # Descomente as seguintes linhas se for usar um Framebuffer para profundidade
-        # gpu.GPU.framebuffer_storage(
-        #     self.framebuffers["FRONT"],
-        #     gpu.GPU.DEPTH_ATTACHMENT,
-        #     gpu.GPU.DEPTH_COMPONENT32F,
-        #     self.width,
-        #     self.height
-        # )
+        gpu.GPU.framebuffer_storage(
+            self.framebuffers["DEPTH"],
+            gpu.GPU.DEPTH_ATTACHMENT,
+            gpu.GPU.DEPTH_COMPONENT32F,
+            self.width*2,
+            self.height*2
+        )
 
         # Opções:
         # - COLOR_ATTACHMENT: alocações para as cores da imagem renderizada
@@ -110,11 +112,13 @@ class Renderizador:
         # Função invocada antes do processo de renderização iniciar.
 
         # Limpa o frame buffers atual
+        gpu.GPU.draw_framebuffer = 2
         gpu.GPU.clear_buffer()
         gpu.GPU.draw_framebuffer = 1
         gpu.GPU.clear_buffer()
         gpu.GPU.draw_framebuffer = 0
-
+        gpu.GPU.clear_buffer()
+        gpu.GPU.read_framebuffer = 0
         # Recursos que podem ser úteis:
         # Define o valor do pixel no framebuffer: draw_pixel(coord, mode, data)
         # Retorna o valor do pixel no framebuffer: read_pixel(coord, mode)

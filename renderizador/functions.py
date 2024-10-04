@@ -29,31 +29,31 @@ def points_in_triangle(vertices):
 
         xmin = int(min([p0[0], p1[0], p2[0]]))
         xmax = int(max([p0[0], p1[0], p2[0]]))
-        ymin = int(min([p0[1], p1[1], p2[1]]))
-        ymax = int(max([p0[1], p1[1], p2[1]]))
+        ymin = min([p0[1], p1[1], p2[1]])
+        ymax = max([p0[1], p1[1], p2[1]])
 
         for x in range(xmin, xmax+1):
             y_lista = []
             if (p0[0] != p2[0]):
-                y = int((p2[1]-p0[1])*(x-p0[0])/(p2[0]-p0[0]) + p0[1])
+                y = (p2[1]-p0[1])*(x-p0[0])/(p2[0]-p0[0]) + p0[1]
                 if y >= ymin and y <= ymax:
                     y_lista.append(y)
             if (p0[0] != p1[0]):
-                y = int((p1[1]-p0[1])*(x-p0[0])/(p1[0]-p0[0]) + p0[1])
+                y = (p1[1]-p0[1])*(x-p0[0])/(p1[0]-p0[0]) + p0[1]
                 if y >= ymin and y <= ymax:
                     y_lista.append(y)
             if (p1[0] != p2[0]):
-                y = int((p2[1]-p1[1])*(x-p1[0])/(p2[0]-p1[0]) + p1[1])
+                y = (p2[1]-p1[1])*(x-p1[0])/(p2[0]-p1[0]) + p1[1]
                 if y >= ymin and y <= ymax:
                     y_lista.append(y)
             if len(y_lista) == 0:
-                yi = ymin
-                yf = ymin
+                yi = int(ymin)
+                yf = int(ymin)
             else:
-                yi = min(y_lista)
-                yf = max(y_lista)
+                yi = int(min(y_lista))
+                yf = int(max(y_lista))
 
-            for y in range(yi, yf+1):
+            for y in range(yi, yf+2):
                 r0 = (x+0.5-p2[0])*n0[0] + (y+0.5-p2[1])*n0[1]
                 r1 = (x+0.5-p0[0])*n1[0] + (y+0.5-p0[1])*n1[1]
                 r2 = (x+0.5-p1[0])*n2[0] + (y+0.5-p1[1])*n2[1]
@@ -63,6 +63,7 @@ def points_in_triangle(vertices):
 
 def triangle_projection(point, matrizes, width, height):
         z_points = []
+        z_points_NDC = []
         triangles = []
         for i in range(0, len(point)-2, 3):
             coords = np.array([[point[i]], [point[i+1]], [point[i+2]], [1]])
@@ -84,7 +85,8 @@ def triangle_projection(point, matrizes, width, height):
             coordsTela = np.matmul(mTela, coordsNormalized)
             triangles.append(coordsTela[0][0])
             triangles.append(coordsTela[1][0])
-        return triangles, z_points
+            z_points_NDC.append(coordsTela[2][0])
+        return triangles, z_points, z_points_NDC
 
 def nivel_image(image):
     new_image = []

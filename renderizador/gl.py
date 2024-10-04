@@ -162,8 +162,14 @@ class GL:
                 x = ponto[0]
                 y = ponto[1]
                 if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
-                    gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
-
+                    if colors['transparency'] != 0:
+                        colorPoint = [0,0,0]
+                        colorOld = gpu.GPU.read_pixel([x,y], gpu.GPU.RGB8)
+                        for i in range(len(color)):
+                            colorPoint[i] = color[i]*(1-colors['transparency']) + colorOld[i]*colors['transparency']
+                        gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, colorPoint)
+                    else:
+                        gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, color)
     @staticmethod
     def triangleSet(point, colors):
         """Função usada para renderizar TriangleSet."""
@@ -364,12 +370,15 @@ class GL:
                 p3 = coord[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
                 list = p1 + p2 + p3
 
-                vertices, z_points = triangle_projection(list, GL.matrizes, GL.width, GL.height)
+                vertices, z_points, z_points_NDC = triangle_projection(list, GL.matrizes, GL.width, GL.height)
 
                 for j in range(len(vertices)):
                     vertices[j] = vertices[j]*2
                 
                 points = points_in_triangle(vertices)
+                p0 = [vertices[0], vertices[1]]
+                p1 = [vertices[2], vertices[3]]
+                p2 = [vertices[4], vertices[5]]
                 
                 for k in range(len(z_points)):
                     z_points[k] = z_points[k]*2
@@ -378,9 +387,6 @@ class GL:
                     color0 = color[(inicio*3):(inicio*3) + 3]
                     color1 = color[(coordIndex[i+1]*3):(coordIndex[i+1]*3 + 3)]
                     color2 = color[(coordIndex[i+2]*3):(coordIndex[i+2]*3 + 3)]
-                    p0 = [vertices[0], vertices[1]]
-                    p1 = [vertices[2], vertices[3]]
-                    p2 = [vertices[4], vertices[5]]
 
                     for point in points:
                         x = point[0]
@@ -397,14 +403,10 @@ class GL:
                         if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                             gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, colorPoint)
 
-                if texCoord and texCoordIndex and current_texture:
+                if texCoord and current_texture:
                     tex0 = texCoord[(inicio*2):(inicio*2) + 2]
                     tex1 = texCoord[(coordIndex[i+1]*2):(coordIndex[i+1]*2 + 2)]
                     tex2 = texCoord[(coordIndex[i+2]*2):(coordIndex[i+2]*2 + 2)]
-                    
-                    p0 = [vertices[0], vertices[1]]
-                    p1 = [vertices[2], vertices[3]]
-                    p2 = [vertices[4], vertices[5]]
 
                     image = gpu.GPU.load_texture(current_texture[0])
 
@@ -457,10 +459,30 @@ class GL:
                         v = z*(tex0[1]*(a/z_points[0]) + tex1[1]*(b/z_points[1]) + tex2[1]*(c/z_points[2]))
 
                         colorPoint = image[int(u*shape[0])][int(shape[1]-v*shape[1])][0:3]
-                        #print(colorPoint)
                         if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                             gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, colorPoint)
+                else:
+                    for point in points:
+                        x = point[0]
+                        y = point[1]
+                        a = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
+                        b = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
+                        c = 1-a-b
+                        z = 1/((a/z_points_NDC[0])+(b/z_points_NDC[1])+(c/z_points_NDC[2]))
 
+                        colorPoint = []
+                        for value in colors['emissiveColor']:
+                            colorPoint.append(int(value*255))
+
+                        if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
+                            gpu.GPU.read_framebuffer = 2
+                            gpu.GPU.draw_framebuffer = 2
+                            if gpu.GPU.read_pixel([x,y], gpu.GPU.DEPTH_COMPONENT32F) > z:
+                                gpu.GPU.draw_pixel([x,y], gpu.GPU.DEPTH_COMPONENT32F, [z])
+                                gpu.GPU.draw_framebuffer = 0
+                                gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, colorPoint)
+                            gpu.GPU.draw_framebuffer = 0
+                            gpu.GPU.read_framebuffer = 0
                 i += 1
             i += 3
 
