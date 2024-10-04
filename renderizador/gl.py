@@ -354,7 +354,6 @@ class GL:
         # cor da textura conforme a posição do mapeamento. Dentro da classe GPU já está
         # implementadado um método para a leitura de imagens.
 
-        print("FaceSet")
         i = 0
         while i < len(coordIndex):
             inicio = coordIndex[i]
@@ -433,22 +432,20 @@ class GL:
                     u01 = z01*(tex0[0]*(a01/z_points[0]) + tex1[0]*(b01/z_points[1]) + tex2[0]*(c01/z_points[2]))
                     v01 = z01*(tex0[1]*(a01/z_points[0]) + tex1[1]*(b01/z_points[1]) + tex2[1]*(c01/z_points[2]))
 
-                    dudx = u10 - u00
-                    dudy = u01 - u00
-                    dvdx = v10 - v00
-                    dvdy = v01 - v00
+                    dudx = (u10 - u00)*image.shape[0]
+                    dudy = (u01 - u00)*image.shape[0]
+                    dvdx = (v10 - v00)*image.shape[1]
+                    dvdy = (v01 - v00)*image.shape[1]
 
                     L = max(np.sqrt(dudx**2 + dvdx**2), np.sqrt(dudy**2 + dvdy**2))
                     D = int(math.log2(L))
                     
-                    print(D)
                     for nivel in range(D):
                         new_image = nivel_image(image)
                         image = new_image
                     
-                    shape = image.shape
-                    print(shape)
-
+                    shape = [len(image), len(image[0])]
+                    
                     for point in points:
                         x = point[0]
                         y = point[1]
@@ -464,37 +461,8 @@ class GL:
                         if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                             gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, colorPoint)
 
-                # if texCoord and texCoordIndex:
-                #     print("\tpontos(u, v) = {0}, texCoordIndex = {1}".format(texCoord, texCoordIndex))
-                #     print(coordIndex)
-                # if current_texture:
-                #     image = gpu.GPU.load_texture(current_texture[0])
-                #     #print("\t Matriz com image = {0}".format(image))
-                #     # print("\t Matriz com image = {0}".format(nivel_image(image, 1)))
-                #     print("\t Dimensões da image = {0}".format(image.shape))
-                #     print("\t Dimensões da image2 = {0}".format(len(nivel_image(image, 1))), len(nivel_image(image, 1)[0]))
-                # print("IndexedFaceSet : colors = {0}".format(colors))  # imprime no terminal as cores
-
                 i += 1
             i += 3
-
-        # Os prints abaixo são só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        # print("IndexedFaceSet : ")
-        # if coord:
-        #     print("\tpontos(x, y, z) = {0}, coordIndex = {1}".format(coord, coordIndex))
-        # print("colorPerVertex = {0}".format(colorPerVertex))
-        # if colorPerVertex and color and colorIndex:
-        #     print("\tcores(r, g, b) = {0}, colorIndex = {1}".format(color, colorIndex))
-        # if texCoord and texCoordIndex:
-        #     print("\tpontos(u, v) = {0}, texCoordIndex = {1}".format(texCoord, texCoordIndex))
-        # if current_texture:
-        #     image = gpu.GPU.load_texture(current_texture[0])
-        #     print("\t Matriz com image = {0}".format(image))
-        #     print("\t Dimensões da image = {0}".format(image.shape))
-        # print("IndexedFaceSet : colors = {0}".format(colors))  # imprime no terminal as cores
-
-        # # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        # gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
 
     @staticmethod
     def box(size, colors):
