@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 def quater_rotation(values):
     angulo = values[3]/2
@@ -104,3 +105,46 @@ def nivel_image(image):
             linha.append([R,G,B])
         new_image.append(linha)
     return new_image
+
+def calcula_tex(point, vertices, z_points, tex, image_shape):
+    p0 = [vertices[0], vertices[1]]
+    p1 = [vertices[2], vertices[3]]
+    p2 = [vertices[4], vertices[5]]
+
+    tex0 = tex[0]
+    tex1 = tex[1]
+    tex2 = tex[2]
+
+    x = point[0]
+    y = point[1]
+
+    a00 = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
+    b00 = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
+    c00 = 1-a00-b00
+    z00 = 1/((a00/z_points[0])+(b00/z_points[1])+(c00/z_points[2]))
+    u00 = z00*(tex0[0]*(a00/z_points[0]) + tex1[0]*(b00/z_points[1]) + tex2[0]*(c00/z_points[2]))
+    v00 = z00*(tex0[1]*(a00/z_points[0]) + tex1[1]*(b00/z_points[1]) + tex2[1]*(c00/z_points[2]))
+
+    a10 = (-(x+1+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
+    b10 = (-(x+1+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
+    c10 = 1-a10-b10
+    z10 = 1/((a10/z_points[0])+(b10/z_points[1])+(c10/z_points[2]))
+    u10 = z10*(tex0[0]*(a10/z_points[0]) + tex1[0]*(b10/z_points[1]) + tex2[0]*(c10/z_points[2]))
+    v10 = z10*(tex0[1]*(a10/z_points[0]) + tex1[1]*(b10/z_points[1]) + tex2[1]*(c10/z_points[2]))
+
+    a01 = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+1+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
+    b01 = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+1+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
+    c01 = 1-a01-b01
+    z01 = 1/((a01/z_points[0])+(b01/z_points[1])+(c01/z_points[2]))
+    u01 = z01*(tex0[0]*(a01/z_points[0]) + tex1[0]*(b01/z_points[1]) + tex2[0]*(c01/z_points[2]))
+    v01 = z01*(tex0[1]*(a01/z_points[0]) + tex1[1]*(b01/z_points[1]) + tex2[1]*(c01/z_points[2]))
+
+    dudx = (u10 - u00)*image_shape[0]
+    dudy = (u01 - u00)*image_shape[0]
+    dvdx = (v10 - v00)*image_shape[1]
+    dvdy = (v01 - v00)*image_shape[1]
+
+    L = max(np.sqrt(dudx**2 + dvdx**2), np.sqrt(dudy**2 + dvdy**2))
+    D = int(math.log2(L))
+
+    return u00, v00, D

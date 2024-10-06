@@ -407,58 +407,28 @@ class GL:
                     tex0 = texCoord[(inicio*2):(inicio*2) + 2]
                     tex1 = texCoord[(coordIndex[i+1]*2):(coordIndex[i+1]*2 + 2)]
                     tex2 = texCoord[(coordIndex[i+2]*2):(coordIndex[i+2]*2 + 2)]
+                    tex_list = [tex0, tex1, tex2]
 
                     image = gpu.GPU.load_texture(current_texture[0])
-
-                    x = points[0][0]
-                    y = points[0][1]
-
-                    a00 = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
-                    b00 = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
-                    c00 = 1-a00-b00
-                    z00 = 1/((a00/z_points[0])+(b00/z_points[1])+(c00/z_points[2]))
-                    u00 = z00*(tex0[0]*(a00/z_points[0]) + tex1[0]*(b00/z_points[1]) + tex2[0]*(c00/z_points[2]))
-                    v00 = z00*(tex0[1]*(a00/z_points[0]) + tex1[1]*(b00/z_points[1]) + tex2[1]*(c00/z_points[2]))
-
-                    a10 = (-(x+1+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
-                    b10 = (-(x+1+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
-                    c10 = 1-a10-b10
-                    z10 = 1/((a10/z_points[0])+(b10/z_points[1])+(c10/z_points[2]))
-                    u10 = z10*(tex0[0]*(a10/z_points[0]) + tex1[0]*(b10/z_points[1]) + tex2[0]*(c10/z_points[2]))
-                    v10 = z10*(tex0[1]*(a10/z_points[0]) + tex1[1]*(b10/z_points[1]) + tex2[1]*(c10/z_points[2]))
-
-                    a01 = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+1+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
-                    b01 = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+1+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
-                    c01 = 1-a01-b01
-                    z01 = 1/((a01/z_points[0])+(b01/z_points[1])+(c01/z_points[2]))
-                    u01 = z01*(tex0[0]*(a01/z_points[0]) + tex1[0]*(b01/z_points[1]) + tex2[0]*(c01/z_points[2]))
-                    v01 = z01*(tex0[1]*(a01/z_points[0]) + tex1[1]*(b01/z_points[1]) + tex2[1]*(c01/z_points[2]))
-
-                    dudx = (u10 - u00)*image.shape[0]
-                    dudy = (u01 - u00)*image.shape[0]
-                    dvdx = (v10 - v00)*image.shape[1]
-                    dvdy = (v01 - v00)*image.shape[1]
-
-                    L = max(np.sqrt(dudx**2 + dvdx**2), np.sqrt(dudy**2 + dvdy**2))
-                    D = int(math.log2(L))
-                    
-                    for nivel in range(D):
-                        new_image = nivel_image(image)
-                        image = new_image
-                    
-                    shape = [len(image), len(image[0])]
+                    shape = image.shape
+                    images = {}
+                    images[0] = image
                     
                     for point in points:
                         x = point[0]
                         y = point[1]
-                        a = (-(x+0.5-p1[0])*(p2[1]-p1[1]) + (y+0.5-p1[1])*(p2[0]-p1[0]))/(-(p0[0]-p1[0])*(p2[1]-p1[1]) + (p0[1]-p1[1])*(p2[0]-p1[0]))
-                        b = (-(x+0.5-p2[0])*(p0[1]-p2[1]) + (y+0.5-p2[1])*(p0[0]-p2[0]))/(-(p1[0]-p2[0])*(p0[1]-p2[1]) + (p1[1]-p2[1])*(p0[0]-p2[0]))
-                        c = 1-a-b
-                        z = 1/((a/z_points[0])+(b/z_points[1])+(c/z_points[2]))
-                        u = z*(tex0[0]*(a/z_points[0]) + tex1[0]*(b/z_points[1]) + tex2[0]*(c/z_points[2]))
-                        v = z*(tex0[1]*(a/z_points[0]) + tex1[1]*(b/z_points[1]) + tex2[1]*(c/z_points[2]))
+                        u, v, D = calcula_tex(point, vertices, z_points, tex_list, shape)
 
-                        colorPoint = image[int(u*shape[0])][int(shape[1]-v*shape[1])][0:3]
+                        image_tex = image
+                        shape_tex = image.shape
+                        if D not in images.keys():
+                            for nivel in range(D):
+                                new_image = nivel_image(image_tex)
+                                image_tex = new_image
+                            images[D] = image_tex
+                            shape_tex = [len(image_tex), len(image_tex[0])]
+
+                        colorPoint = image_tex[int(u*shape_tex[0])][int(shape_tex[1]*(1-v))][0:3]
                         if (x < GL.width and y < GL.height and x >= 0 and y >= 0):
                             gpu.GPU.draw_pixel([x,y], gpu.GPU.RGB8, colorPoint)
                 else:
