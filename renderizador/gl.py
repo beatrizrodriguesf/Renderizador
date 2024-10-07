@@ -51,8 +51,8 @@ class GL:
             color = []
             for value in colors['emissiveColor']:
                 color.append(value*255)
-            pos_x = int(point[i])
-            pos_y = int(point[i+1])
+            pos_x = int(point[i]*2)
+            pos_y = int(point[i+1]*2)
             if (pos_x < GL.width and pos_y < GL.height and pos_x >= 0 and pos_y >= 0):
                 gpu.GPU.draw_pixel([pos_x, pos_y], gpu.GPU.RGB8, color)
         
@@ -76,10 +76,10 @@ class GL:
 
         for i in range(0, len(lineSegments)-2, 2):
 
-            x1 = lineSegments[i]
-            y1 = lineSegments[i+1]
-            x2 = lineSegments[i+2]
-            y2 = lineSegments[i+3]
+            x1 = lineSegments[i]*2
+            y1 = lineSegments[i+1]*2
+            x2 = lineSegments[i+2]*2
+            y2 = lineSegments[i+3]*2
 
             if x1 > x2:
                 xmax = int(x1)
@@ -127,6 +127,7 @@ class GL:
         for value in colors['emissiveColor']:
             color.append(int(value*255))
 
+        radius *= 2
         x_anterior = radius
         for y in range(0, round(radius)+1):
             x = round(np.sqrt(radius**2 - y**2))
