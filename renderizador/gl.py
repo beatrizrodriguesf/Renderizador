@@ -504,6 +504,18 @@ class GL:
         print("Cone : bottomRadius = {0}".format(bottomRadius)) # imprime no terminal o raio da base do cone
         print("Cone : height = {0}".format(height)) # imprime no terminal a altura do cone
         print("Cone : colors = {0}".format(colors)) # imprime no terminal as cores
+        bottomPoints = [] # x1, z1, x2, z2 ...
+        for angulo in range(0,360,5):
+            angulo = angulo*math.pi/180
+            x = bottomRadius*math.cos(angulo)
+            bottomPoints.append(x)
+            z = bottomRadius*math.sin(angulo)
+            bottomPoints.append(z)
+
+        for i in range(0, len(bottomPoints)-4, 2):
+            points = [0,height/2, 0, bottomPoints[i+2], -height/2, bottomPoints[i+3], bottomPoints[i], -height/2, bottomPoints[i+1]]
+            GL.triangleSet(points, colors)
+
 
     @staticmethod
     def cylinder(radius, height, colors):
@@ -520,6 +532,22 @@ class GL:
         print("Cylinder : radius = {0}".format(radius)) # imprime no terminal o raio do cilindro
         print("Cylinder : height = {0}".format(height)) # imprime no terminal a altura do cilindro
         print("Cylinder : colors = {0}".format(colors)) # imprime no terminal as cores
+
+        circlePoints = [] # x1, z1, x2, z2 ...
+        for angulo in range(0,360,5):
+            angulo = angulo*math.pi/180
+            x = radius*math.cos(angulo)
+            circlePoints.append(x)
+            z = radius*math.sin(angulo)
+            circlePoints.append(z)
+        
+        for i in range(0, len(circlePoints)-4, 2):
+            points = [circlePoints[i], height/2, circlePoints[i+1], circlePoints[i+2], -height/2, circlePoints[i+3], circlePoints[i], -height/2, circlePoints[i+1]]
+            GL.triangleSet(points, colors)
+        
+        for i in range(0, len(circlePoints)-4, 2):
+            points = [circlePoints[i], -height/2, circlePoints[i+1], circlePoints[i+2], height/2, circlePoints[i+3], circlePoints[i], height/2, circlePoints[i+1]]
+            GL.triangleSet(points, colors)
 
     @staticmethod
     def navigationInfo(headlight):
