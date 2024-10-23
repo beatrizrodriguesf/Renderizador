@@ -472,8 +472,28 @@ class GL:
         print("Box : size = {0}".format(size)) # imprime no terminal pontos
         print("Box : colors = {0}".format(colors)) # imprime no terminal as cores
 
+        x = size[0]/2
+        y = size[1]/2
+        z = size[2]/2
+
+        vertices = [-x, y, -z, -x, y, z, x, y, z, x, y, -z, -x, -y, -z, -x, -y, z, x, -y, z, x, -y, -z]
+        triangles = [   0,1,3, -1,
+                        1,2,3, -1,
+                        0,4,1, -1,
+                        4,5,1, -1,
+                        1,5,2, -1,
+                        5,6,2, -1,
+                        2,6,3, -1,
+                        6,7,3, -1,
+                        3,7,0, -1,
+                        7,4,0, -1,
+                        4,7,5, -1,
+                        7,6,5, -1 ]
+        
+        GL.indexedTriangleStripSet(vertices, triangles, colors)
+
         # Exemplo de desenho de um pixel branco na coordenada 10, 10
-        gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
+        # gpu.GPU.draw_pixel([10, 10], gpu.GPU.RGB8, [255, 255, 255])  # altera pixel
 
     @staticmethod
     def sphere(radius, colors):
