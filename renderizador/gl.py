@@ -489,6 +489,37 @@ class GL:
         print("Sphere : radius = {0}".format(radius)) # imprime no terminal o raio da esfera
         print("Sphere : colors = {0}".format(colors)) # imprime no terminal as cores
 
+        dphi = 10
+        for phi in range(0, 180, dphi):
+            base = []
+            for a in range(0, 360+dphi, dphi):
+                b = phi*math.pi/180
+                z = radius*math.cos(b)
+                x = radius*math.sin(b)*math.cos(a)
+                y = radius*math.sin(b)*math.sin(a)
+                base.append(x)
+                base.append(y)
+                base.append(z)
+            
+            topo = []
+            for a in range(0, 360+dphi, dphi):
+                b2 = (phi + dphi)*math.pi/180
+                z = radius*math.cos(b2)
+                x = radius*math.sin(b2)*math.cos(a)
+                y = radius*math.sin(b2)*math.sin(a)
+                topo.append(x)
+                topo.append(y)
+                topo.append(z)
+
+            for i in range(0, len(topo)-5, 3):
+                points = [topo[i], topo[i+1], topo[i+2], topo[i+3], topo[i+4], topo[i+5], base[i], base[i+1], base[i+2]]
+                GL.triangleSet(points, colors)
+            
+            for i in range(0, len(base)-5, 3):
+                points = [base[i], base[i+1], base[i+2], topo[i+3], topo[i+4], topo[i+5], base[i+3], base[i+4], base[i+5]]
+                GL.triangleSet(points, colors)
+
+
     @staticmethod
     def cone(bottomRadius, height, colors):
         """Função usada para renderizar Cones."""
@@ -500,12 +531,8 @@ class GL:
         # Para desenha esse cone você vai precisar tesselar ele em triângulos, para isso
         # encontre os vértices e defina os triângulos.
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("Cone : bottomRadius = {0}".format(bottomRadius)) # imprime no terminal o raio da base do cone
-        print("Cone : height = {0}".format(height)) # imprime no terminal a altura do cone
-        print("Cone : colors = {0}".format(colors)) # imprime no terminal as cores
         bottomPoints = [] # x1, z1, x2, z2 ...
-        for angulo in range(0,360,5):
+        for angulo in range(0,360+15,15):
             angulo = angulo*math.pi/180
             x = bottomRadius*math.cos(angulo)
             bottomPoints.append(x)
@@ -528,25 +555,20 @@ class GL:
         # Para desenha esse cilindro você vai precisar tesselar ele em triângulos, para isso
         # encontre os vértices e defina os triângulos.
 
-        # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-        print("Cylinder : radius = {0}".format(radius)) # imprime no terminal o raio do cilindro
-        print("Cylinder : height = {0}".format(height)) # imprime no terminal a altura do cilindro
-        print("Cylinder : colors = {0}".format(colors)) # imprime no terminal as cores
-
         circlePoints = [] # x1, z1, x2, z2 ...
-        for angulo in range(0,360,5):
+        for angulo in range(0,360+10,10):
             angulo = angulo*math.pi/180
             x = radius*math.cos(angulo)
             circlePoints.append(x)
             z = radius*math.sin(angulo)
             circlePoints.append(z)
         
-        for i in range(0, len(circlePoints)-4, 2):
+        for i in range(0, len(circlePoints)-3, 2):
             points = [circlePoints[i], height/2, circlePoints[i+1], circlePoints[i+2], -height/2, circlePoints[i+3], circlePoints[i], -height/2, circlePoints[i+1]]
             GL.triangleSet(points, colors)
         
-        for i in range(0, len(circlePoints)-4, 2):
-            points = [circlePoints[i], -height/2, circlePoints[i+1], circlePoints[i+2], height/2, circlePoints[i+3], circlePoints[i], height/2, circlePoints[i+1]]
+        for i in range(2, len(circlePoints)-1, 2):
+            points = [circlePoints[i], -height/2, circlePoints[i+1], circlePoints[i-2], height/2, circlePoints[i-1], circlePoints[i], height/2, circlePoints[i+1]]
             GL.triangleSet(points, colors)
 
     @staticmethod
